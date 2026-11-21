@@ -34,7 +34,22 @@ jobs:
       - name: Install declared dependencies
         run: npm install --ignore-scripts --no-package-lock --no-audit --no-fund
 
-      - name: Run tests without the datastore
+      - name: Run tests and report coverage without the datastore
+        shell: bash
         run: |
           test ! -e data/db.json
-          node --test
+          coverage_log="$RUNNER_TEMP/shopledger-test-coverage.tap"
+          test_status=0
+          node --test --experimental-test-coverage --test-reporter=tap \
+            --test-coverage-include='config.js' --test-coverage-include='lib/**/*.js' \
+            | tee "$coverage_log" || test_status=$?
+
+          {
+            echo '### Node.js test coverage'
+            echo
+            echo '```text'
+            sed -n '/^# start of coverage report$/,/^# end of coverage report$/p' "$coverage_log" | sed 's/^# //'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          exit "$test_status"
