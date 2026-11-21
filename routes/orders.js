@@ -8,7 +8,7 @@ var ledger = require('../lib/ledger');
 
 var router = express.Router();
 
-router.get('/orders', function (req, res) {
+router.get('/orders', function (req, res, next) {
   var db = store.read();
   var filters = {
     status: req.query.status || 'all',
@@ -16,7 +16,14 @@ router.get('/orders', function (req, res) {
     from: req.query.from || '',
     to: req.query.to || ''
   };
-  res.json(orders.list(db, filters));
+  try {
+    res.json(orders.list(db, filters));
+  } catch (error) {
+    if (error instanceof orders.OrderDateFilterError) {
+      return res.status(400).json({ error: error.message });
+    }
+    return next(error);
+  }
 });
 
 router.get('/orders/:id', function (req, res) {
